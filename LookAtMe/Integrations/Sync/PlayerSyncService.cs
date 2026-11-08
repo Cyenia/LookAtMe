@@ -10,6 +10,7 @@ public sealed class PlayerSyncService : ReflectedSyncService
 {
     private object pairManager = null!;
     private object api = null!;
+    private object? utilService;
     private object manualReason = null!;
     private MethodInfo hashCid = null!;
     private FieldInfo allClientPairs = null!;
@@ -37,9 +38,22 @@ public sealed class PlayerSyncService : ReflectedSyncService
         var duration = SyncReflection.Type(assembly, "MareSynchronos.MareConfiguration.Models.PauseDuration");
         var apiType = newApi.GetType();
 
-        hashCid = SyncReflection.Method(util, "GetHashedCIDFromPlayerPointer", typeof(nint));
+        // 1.15.5.16 made GetHashedCIDFromPlayerPointer an instance method taking nint? and renamed Pair.Ident to HashedCID.
+        object? newUtil = null;
+        MethodInfo newHashCid;
+        try
+        {
+            newHashCid = SyncReflection.Method(util, "GetHashedCIDFromPlayerPointer", typeof(nint?));
+            newUtil = SyncReflection.GetService(plugin, util.FullName!);
+        }
+        catch (MissingMemberException)
+        {
+            newHashCid = SyncReflection.Method(util, "GetHashedCIDFromPlayerPointer", typeof(nint));
+        }
+
+        hashCid = newHashCid;
         allClientPairs = SyncReflection.Field(newPairManager.GetType(), "_allClientPairs");
-        ident = SyncReflection.Property(pair, "Ident");
+        ident = pair.GetProperty("HashedCID") ?? SyncReflection.Property(pair, "Ident");
         isPaused = SyncReflection.Property(pair, "IsPaused");
         userData = SyncReflection.Property(pair, "UserData");
         isConnected = SyncReflection.Property(apiType, "IsConnected");
@@ -71,12 +85,14 @@ public sealed class PlayerSyncService : ReflectedSyncService
 
         pairManager = newPairManager;
         api = newApi;
+        utilService = newUtil;
     }
 
     protected override void Unbind()
     {
         pairManager = null!;
         api = null!;
+        utilService = null;
         manualReason = null!;
         hashCid = null!;
         allClientPairs = null!;
@@ -97,7 +113,7 @@ public sealed class PlayerSyncService : ReflectedSyncService
 
     protected override object? FindPair(nint address)
     {
-        if (address == 0 || hashCid.Invoke(null, [address]) is not string { Length: > 0 } hash)
+        if (address == 0 || hashCid.Invoke(utilService, [address]) is not string { Length: > 0 } hash)
             return null;
 
         var pairs = (IDictionary)allClientPairs.GetValue(pairManager)!;
