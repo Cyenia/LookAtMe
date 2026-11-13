@@ -34,6 +34,11 @@ public sealed class ViewerWindow : Window
     public Action<ViewerRecord, float>? DrawEmoteChips { get; set; }
     public Action? OpenSettings { get; set; }
 
+    /// <summary>What's typed in the search box; every nearby player whose name contains it gets the overlay.</summary>
+    /// Empty once the window stops drawing (closed, or hidden with the game UI).
+    public string SearchText => ImGui.GetFrameCount() - hoveredFrame <= 1 ? searchText : string.Empty;
+    private string searchText = string.Empty;
+
     public ViewerWindow(Configuration config, ViewerTracker tracker) : base("Look At Me##viewers", BaseFlags)
     {
         this.config = config;
@@ -59,6 +64,8 @@ public sealed class ViewerWindow : Window
         var now = DateTime.Now;
         var rows = ViewerList.Visible(tracker.All, config.ListCap);
 
+        DrawSearchBox();
+
         if (rows.Count == 0)
         {
             ImGui.TextDisabled("No one is looking at you.");
@@ -78,6 +85,14 @@ public sealed class ViewerWindow : Window
 
         if (OpenSettings != null && ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows | ImGuiHoveredFlags.AllowWhenBlockedByActiveItem))
             DrawSettingsButton();
+    }
+
+    private void DrawSearchBox()
+    {
+        // Leaves room on the right for the settings cog, which is drawn over the top row on hover.
+        var reserve = OpenSettings != null ? ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.X : 0f;
+        ImGui.SetNextItemWidth(MathF.Max(ImGui.GetContentRegionAvail().X - reserve, 40f));
+        ImGui.InputTextWithHint("##search", "Find a player nearby...", ref searchText, 64);
     }
 
     private void DrawSettingsButton()

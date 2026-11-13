@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using LookAtMe.Alerts;
+using LookAtMe.Core;
 using LookAtMe.Game;
 using LookAtMe.Integrations;
 using LookAtMe.Integrations.Sync;
@@ -110,11 +112,28 @@ public sealed class Plugin : IDalamudPlugin
 
         // While the sync pause hotkey marks someone, the hover overlay stays out of the way.
         PauseHotkey.Draw(overlay);
-        if (!PauseHotkey.HasTarget
-            && ViewerWindow.Hovered is { } hovered
-            && Tracker.Resolve(hovered) is { } target
-            && Services.ObjectTable.LocalPlayer is { } self)
+        if (PauseHotkey.HasTarget || Services.ObjectTable.LocalPlayer is not { } self)
+            return;
+
+        if (ViewerWindow.Hovered is { } hovered && Tracker.Resolve(hovered) is { } target)
             overlay.Draw(target, self, OverlayStyle.From(Config));
+
+        DrawSearchMatches(self);
+    }
+
+    private void DrawSearchMatches(IPlayerCharacter self)
+    {
+        var query = ViewerWindow.SearchText;
+        if (query.Trim().Length == 0)
+            return;
+
+        var style = OverlayStyle.From(Config);
+        foreach (var obj in Services.ObjectTable.PlayerObjects)
+        {
+            if (obj is IPlayerCharacter pc && pc.GameObjectId != self.GameObjectId
+                && PlayerSearch.Matches(pc.Name.TextValue, query))
+                overlay.Draw(pc, self, style with { Label = pc.Name.TextValue });
+        }
     }
 
     private void ToggleViewerWindow() => ViewerWindow.Toggle();
