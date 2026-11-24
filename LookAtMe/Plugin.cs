@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
@@ -119,6 +120,7 @@ public sealed class Plugin : IDalamudPlugin
             overlay.Draw(target, self, OverlayStyle.From(Config));
 
         DrawSearchMatches(self);
+        DrawDots(self);
     }
 
     private void DrawSearchMatches(IPlayerCharacter self)
@@ -133,6 +135,21 @@ public sealed class Plugin : IDalamudPlugin
             if (obj is IPlayerCharacter pc && pc.GameObjectId != self.GameObjectId
                 && PlayerSearch.Matches(pc.Name.TextValue, query))
                 overlay.Draw(pc, self, style with { Label = pc.Name.TextValue });
+        }
+    }
+    
+    private void DrawDots(IPlayerCharacter self)
+    {
+        if (!Config.OverlayDot)
+            return;
+
+        var style = OverlayDotStyle.From(Config);
+        var visible = ViewerList.Visible(Tracker.All, Config.ListCap).Where(vr => vr.IsTargeting).ToList();
+        foreach (var obj in Services.ObjectTable.PlayerObjects)
+        {
+            if (obj is IPlayerCharacter pc && pc.GameObjectId != self.GameObjectId
+                                           && visible.Any(v => v.GameObjectId == pc.GameObjectId))
+                overlay.DrawDot(pc, style);
         }
     }
 
