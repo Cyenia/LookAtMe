@@ -77,6 +77,7 @@ public sealed class Plugin : IDalamudPlugin
         Services.PluginInterface.UiBuilder.OpenConfigUi += SettingsWindow.Toggle;
         Services.Framework.Update += OnFrameworkUpdate;
         Services.ClientState.Login += OnLogin;
+        Services.ClientState.Logout += OnLogout;
         Services.PluginInterface.ActivePluginsChanged += OnPluginsChanged;
         Services.CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
         {
@@ -94,6 +95,7 @@ public sealed class Plugin : IDalamudPlugin
         Camera.Dispose();
         Services.CommandManager.RemoveHandler(Command);
         Services.ClientState.Login -= OnLogin;
+        Services.ClientState.Logout -= OnLogout;
         Services.PluginInterface.ActivePluginsChanged -= OnPluginsChanged;
         Services.Framework.Update -= OnFrameworkUpdate;
         Services.PluginInterface.UiBuilder.OpenMainUi -= ToggleViewerWindow;
@@ -170,6 +172,11 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (Config.OpenOnLogin)
             ViewerWindow.IsOpen = true;
+    }
+
+    private void OnLogout(int type, int code)
+    {
+        ViewerWindow.IsOpen = false;
     }
 
     private void OnFrameworkUpdate(IFramework framework)
